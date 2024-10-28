@@ -1,0 +1,54 @@
+version: '3'
+services:
+  payload:
+    container_name: multi-tenant-payload
+    build:
+      context: ./payload
+      dockerfile: Dockerfile
+    ports:
+      - '1337:1337'
+    volumes:
+      - ./payload:/home/node/app
+      - ./payload/node_modules:/home/node/app/node_modules
+    working_dir: /home/node/app/
+    command: sh -c "yarn install && yarn dev"
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URI: postgres://keytoz:qwedsa@postgres:5432/payload-multi-tenant
+      PORT: 1337
+      NODE_ENV: development
+      PAYLOAD_SECRET: PAYLOAD_MULTI_TENANT_EXAMPLE_SECRET_KEY
+    networks:
+      - multi-tenant-postgres-network
+      
+  postgres:
+    container_name: multi-tenant-postgres
+    image: postgres
+    environment:
+      POSTGRES_DB: payload-multi-tenant
+      POSTGRES_USER: keytoz
+      POSTGRES_PASSWORD: qwedsa
+    networks:
+      - multi-tenant-postgres-network
+
+  nextjs:
+    build:
+      context: ./UI
+      dockerfile: Dockerfile
+    container_name: multi-tenant-nextjs
+    ports:
+      - "3000:3000"
+    networks:
+      - multi-tenant-postgres-network
+    volumes:
+      - ./UI:/app
+    command: yarn serve
+
+volumes:
+  data:
+  node_modules:
+
+networks:
+  multi-tenant-postgres-network:
+    driver: bridge
